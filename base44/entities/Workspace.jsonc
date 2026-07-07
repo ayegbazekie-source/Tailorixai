@@ -1,0 +1,23 @@
+{
+  "name": "Workspace",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Workspace name"
+    },
+    "host_user_id": {
+      "type": "string",
+      "description": "ID of the user who created the workspace"
+    },
+    "host_user_email": {
+      "type": "string",
+      "description": "Email of the host user"
+    }
+  },
+  "required": [
+    "name",
+    "host_user_id",
+    "host_user_email"
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "name": "WorkspaceDesign",
+  "type": "object",
+  "properties": {
+    "workspace_id": {
+      "type": "string",
+      "description": "ID of the workspace"
+    },
+    "design_id": {
+      "type": "string",
+      "description": "ID of the design"
+    },
+    "title": {
+      "type": "string",
+      "description": "Design title"
+    },
+    "preview_url": {
+      "type": "string",
+      "description": "Design preview image URL"
+    },
+    "created_by_id": {
+      "type": "string",
+      "description": "User ID who created it"
+    },
+    "created_by_name": {
+      "type": "string",
+      "description": "User name who created it"
+    },
+    "last_edited_by": {
+      "type": "string",
+      "description": "Last editor name"
+    }
+  },
+  "required": [
+    "workspace_id",
+    "title",
+    "preview_url",
+    "created_by_id"
+  ]
+}

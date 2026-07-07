@@ -1,0 +1,53 @@
+{
+  "name": "Notification",
+  "type": "object",
+  "properties": {
+    "recipient_id": {
+      "type": "string",
+      "description": "User ID of the notification recipient"
+    },
+    "actor_name": {
+      "type": "string",
+      "description": "Name of the user who triggered the action"
+    },
+    "actor_id": {
+      "type": "string",
+      "description": "User ID who triggered the action"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "like",
+        "comment",
+        "remix",
+        "comment_like",
+        "comment_reply",
+        "review_response"
+      ],
+      "description": "Type of engagement"
+    },
+    "post_id": {
+      "type": "string",
+      "description": "ID of the InspirationPost, workspace, or review depending on type"
+    },
+    "post_preview": {
+      "type": "string",
+      "description": "Short excerpt of the post prompt or review text for display"
+    },
+    "post_image_url": {
+      "type": "string",
+      "description": "Thumbnail of the post"
+    },
+    "is_read": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the recipient has seen this notification"
+    }
+  },
+  "required": [
+    "recipient_id",
+    "actor_name",
+    "type",
+    "post_id"
+  ]
+}

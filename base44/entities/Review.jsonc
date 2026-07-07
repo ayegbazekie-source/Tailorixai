@@ -1,0 +1,42 @@
+{
+  "name": "Review",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "ID of the user who wrote the review"
+    },
+    "user_name": {
+      "type": "string",
+      "description": "Display name of the reviewer"
+    },
+    "is_premium": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the user is a Pro/Bespoke member"
+    },
+    "rating": {
+      "type": "integer",
+      "description": "Star rating from 1 to 5"
+    },
+    "comment": {
+      "type": "string",
+      "description": "Review comment text"
+    },
+    "admin_response": {
+      "type": "string",
+      "description": "Admin reply to this review"
+    },
+    "response_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when admin responded"
+    }
+  },
+  "required": [
+    "user_id",
+    "user_name",
+    "rating",
+    "comment"
+  ]
+}

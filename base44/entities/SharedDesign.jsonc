@@ -1,0 +1,38 @@
+{
+  "name": "SharedDesign",
+  "type": "object",
+  "properties": {
+    "design_id": {
+      "type": "string",
+      "description": "ID of the design being shared"
+    },
+    "owner_id": {
+      "type": "string",
+      "description": "ID of the user who owns the design"
+    },
+    "shared_with_email": {
+      "type": "string",
+      "description": "Email of user the design is shared with"
+    },
+    "permission": {
+      "type": "string",
+      "enum": [
+        "view",
+        "comment",
+        "edit"
+      ],
+      "default": "view",
+      "description": "Permission level for shared user"
+    },
+    "accepted": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the invitation has been accepted"
+    }
+  },
+  "required": [
+    "design_id",
+    "owner_id",
+    "shared_with_email"
+  ]
+}

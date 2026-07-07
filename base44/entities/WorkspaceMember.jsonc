@@ -1,0 +1,42 @@
+{
+  "name": "WorkspaceMember",
+  "type": "object",
+  "properties": {
+    "workspace_id": {
+      "type": "string",
+      "description": "ID of the workspace"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "ID of the member"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "Email of the member"
+    },
+    "user_name": {
+      "type": "string",
+      "description": "Name of the member"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "host",
+        "supervisor",
+        "tailor"
+      ],
+      "description": "Member role in workspace"
+    },
+    "is_online": {
+      "type": "boolean",
+      "default": false,
+      "description": "Online status"
+    }
+  },
+  "required": [
+    "workspace_id",
+    "user_id",
+    "user_email",
+    "role"
+  ]
+}

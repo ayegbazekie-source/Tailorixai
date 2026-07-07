@@ -1,0 +1,69 @@
+{
+  "name": "DesignComment",
+  "type": "object",
+  "properties": {
+    "design_id": {
+      "type": "string",
+      "description": "ID of the design"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "ID of user who made the comment"
+    },
+    "user_name": {
+      "type": "string",
+      "description": "Name of user who made the comment"
+    },
+    "comment": {
+      "type": "string",
+      "description": "The comment text"
+    },
+    "likes": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of likes on this comment"
+    },
+    "liked_by": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of user IDs who liked this comment"
+    },
+    "replies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "user_name": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Threaded replies to this comment (premium only)"
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "description": "Position on the design image"
+    }
+  },
+  "required": [
+    "design_id",
+    "user_id",
+    "comment"
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "name": "WorkspaceVersion",
+  "type": "object",
+  "properties": {
+    "workspace_id": {
+      "type": "string",
+      "description": "ID of the workspace"
+    },
+    "design_id": {
+      "type": "string",
+      "description": "ID of the design"
+    },
+    "version_number": {
+      "type": "number",
+      "description": "Version number"
+    },
+    "preview_url": {
+      "type": "string",
+      "description": "Version preview URL"
+    },
+    "edited_by_id": {
+      "type": "string",
+      "description": "Editor user ID"
+    },
+    "edited_by_name": {
+      "type": "string",
+      "description": "Editor name"
+    },
+    "change_description": {
+      "type": "string",
+      "description": "Description of changes"
+    }
+  },
+  "required": [
+    "workspace_id",
+    "design_id",
+    "version_number",
+    "preview_url",
+    "edited_by_id"
+  ]
+}

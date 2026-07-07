@@ -1,0 +1,104 @@
+{
+  "name": "SewingSession",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "lesson_id": {
+      "type": "string",
+      "description": "If part of a lesson"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "learn",
+        "practice",
+        "challenge"
+      ]
+    },
+    "fabric_id": {
+      "type": "string"
+    },
+    "stitch_type_id": {
+      "type": "string"
+    },
+    "stitch_length": {
+      "type": "number"
+    },
+    "duration_seconds": {
+      "type": "number"
+    },
+    "stitch_data": {
+      "type": "object",
+      "properties": {
+        "total_stitches": {
+          "type": "number"
+        },
+        "path_points": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "speed_variations": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "drift_events": {
+          "type": "number"
+        },
+        "corrections": {
+          "type": "number"
+        }
+      }
+    },
+    "accuracy_score": {
+      "type": "number"
+    },
+    "speed_score": {
+      "type": "number"
+    },
+    "overall_score": {
+      "type": "number"
+    },
+    "ai_feedback": {
+      "type": "object",
+      "properties": {
+        "diagnosis": {
+          "type": "string"
+        },
+        "strengths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "improvements": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tips": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "passed": {
+      "type": "boolean"
+    },
+    "xp_earned": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "user_id",
+    "mode"
+  ]
+}

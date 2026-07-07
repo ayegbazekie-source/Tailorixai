@@ -1,0 +1,64 @@
+{
+  "name": "Fabric",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Name of the fabric"
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of the fabric characteristics"
+    },
+    "image_url": {
+      "type": "string",
+      "description": "Image of the fabric texture"
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": [
+        "beginner",
+        "intermediate",
+        "advanced"
+      ],
+      "description": "Difficulty level to work with"
+    },
+    "stiffness": {
+      "type": "number",
+      "description": "Stiffness factor 1-10 (low=flowy, high=rigid)"
+    },
+    "thickness": {
+      "type": "number",
+      "description": "Thickness factor 1-10"
+    },
+    "speed_tolerance": {
+      "type": "number",
+      "description": "How forgiving the fabric is at high speeds 1-10"
+    },
+    "slip_factor": {
+      "type": "number",
+      "description": "How much the fabric tends to slip 1-10"
+    },
+    "recommended_stitch_length": {
+      "type": "number",
+      "description": "Recommended stitch length in mm"
+    },
+    "tips": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Tips for working with this fabric"
+    },
+    "unlock_level": {
+      "type": "number",
+      "description": "Skill level required to unlock this fabric"
+    }
+  },
+  "required": [
+    "name",
+    "difficulty",
+    "stiffness",
+    "thickness"
+  ]
+}

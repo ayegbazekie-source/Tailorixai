@@ -1,0 +1,64 @@
+{
+  "name": "UserProgress",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "skill_level": {
+      "type": "number",
+      "description": "Current skill level 1-100"
+    },
+    "total_xp": {
+      "type": "number"
+    },
+    "completed_lessons": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "IDs of completed lessons"
+    },
+    "unlocked_fabrics": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "unlocked_stitches": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "practice_sessions": {
+      "type": "number"
+    },
+    "total_stitches": {
+      "type": "number"
+    },
+    "best_accuracy": {
+      "type": "number"
+    },
+    "achievements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "earned_date": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "user_id"
+  ]
+}

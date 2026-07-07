@@ -1,0 +1,35 @@
+{
+  "name": "DesignVersion",
+  "type": "object",
+  "properties": {
+    "design_id": {
+      "type": "string",
+      "description": "ID of the original design"
+    },
+    "version_number": {
+      "type": "number",
+      "description": "Version number"
+    },
+    "image_url": {
+      "type": "string",
+      "description": "URL of this version's image"
+    },
+    "prompt": {
+      "type": "string",
+      "description": "Prompt used for this version"
+    },
+    "changed_by": {
+      "type": "string",
+      "description": "User who made this version"
+    },
+    "change_description": {
+      "type": "string",
+      "description": "Description of changes"
+    }
+  },
+  "required": [
+    "design_id",
+    "version_number",
+    "image_url"
+  ]
+}

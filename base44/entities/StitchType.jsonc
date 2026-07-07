@@ -1,0 +1,50 @@
+{
+  "name": "StitchType",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Name of the stitch type"
+    },
+    "description": {
+      "type": "string",
+      "description": "Description and use cases"
+    },
+    "icon": {
+      "type": "string",
+      "description": "Visual representation pattern"
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": [
+        "beginner",
+        "intermediate",
+        "advanced"
+      ]
+    },
+    "default_length": {
+      "type": "number",
+      "description": "Default stitch length in mm"
+    },
+    "min_length": {
+      "type": "number"
+    },
+    "max_length": {
+      "type": "number"
+    },
+    "best_for": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Best use cases for this stitch"
+    },
+    "unlock_level": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "name",
+    "difficulty"
+  ]
+}

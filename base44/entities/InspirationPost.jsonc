@@ -1,0 +1,61 @@
+{
+  "name": "InspirationPost",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "ID of the user who published the post"
+    },
+    "user_name": {
+      "type": "string",
+      "description": "Display name of the publisher"
+    },
+    "image_url": {
+      "type": "string",
+      "description": "URL of the generated design image"
+    },
+    "prompt": {
+      "type": "string",
+      "description": "Original prompt used to generate the design"
+    },
+    "body_type": {
+      "type": "string",
+      "description": "Body type parameter used"
+    },
+    "fabric_type": {
+      "type": "string",
+      "description": "Fabric type parameter used"
+    },
+    "occasion": {
+      "type": "string",
+      "description": "Occasion parameter used"
+    },
+    "design_type": {
+      "type": "string",
+      "description": "Type of design (create, modify, convert)"
+    },
+    "likes": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of likes"
+    },
+    "remix_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of times this design was remixed"
+    },
+    "liked_by": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of user IDs who liked this post"
+    }
+  },
+  "required": [
+    "user_id",
+    "user_name",
+    "image_url",
+    "prompt"
+  ]
+}

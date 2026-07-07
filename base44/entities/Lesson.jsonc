@@ -1,0 +1,71 @@
+{
+  "name": "Lesson",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "order": {
+      "type": "number",
+      "description": "Lesson order in curriculum"
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": [
+        "beginner",
+        "intermediate",
+        "advanced"
+      ]
+    },
+    "fabric_id": {
+      "type": "string",
+      "description": "Required fabric for this lesson"
+    },
+    "stitch_type_id": {
+      "type": "string",
+      "description": "Stitch type taught in this lesson"
+    },
+    "objectives": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "instructions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "step": {
+            "type": "number"
+          },
+          "text": {
+            "type": "string"
+          },
+          "tip": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "target_speed": {
+      "type": "number",
+      "description": "Target speed for passing"
+    },
+    "target_accuracy": {
+      "type": "number",
+      "description": "Target accuracy percentage"
+    },
+    "xp_reward": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "title",
+    "order",
+    "difficulty"
+  ]
+}

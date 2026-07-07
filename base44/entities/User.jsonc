@@ -1,0 +1,79 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "role": {
+      "type": "string",
+      "enum": [
+        "admin",
+        "user"
+      ],
+      "default": "user"
+    },
+    "analysis_credits": {
+      "type": "integer",
+      "default": 2,
+      "description": "Credits for Professional Analysis feature"
+    },
+    "illustrator_credits": {
+      "type": "integer",
+      "default": 2,
+      "description": "Credits for Fashion Illustrator feature"
+    },
+    "solver_credits": {
+      "type": "integer",
+      "default": 2,
+      "description": "Credits for Problem Solver feature"
+    },
+    "visualizer_credits": {
+      "type": "integer",
+      "default": 2,
+      "description": "Credits for Fabric Visualizer feature"
+    },
+    "rewarded_ads_watched_today": {
+      "type": "integer",
+      "default": 0,
+      "description": "Number of rewarded ads watched today"
+    },
+    "last_reward_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last datetime user watched a rewarded ad"
+    },
+    "last_ad_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Exact timestamp of last ad watched (for 60s cooldown)"
+    },
+    "last_credit_reset_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Last date daily free credits were granted"
+    },
+    "is_premium": {
+      "type": "boolean",
+      "default": false,
+      "description": "Premium subscription status"
+    },
+    "premium_expiry_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date when premium subscription expires"
+    },
+    "isPro": {
+      "type": "boolean",
+      "default": false,
+      "description": "SewSimple Pro subscription status"
+    },
+    "proExpiresAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Date and time when Pro subscription expires"
+    },
+    "country": {
+      "type": "string",
+      "description": "User's country for regional pricing"
+    }
+  },
+  "required": []
+}
