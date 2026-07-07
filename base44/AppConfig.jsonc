@@ -1,0 +1,22 @@
+{
+  "name": "AppConfig",
+  "type": "object",
+  "properties": {
+    "key": {
+      "type": "string",
+      "description": "Config key identifier (e.g. 'is_production')"
+    },
+    "value": {
+      "type": "string",
+      "description": "Config value as string ('true' or 'false')"
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of this config"
+    }
+  },
+  "required": [
+    "key",
+    "value"
+  ]
+}
