@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/lib/supabase';
+import { workspaceService } from '@/services/workspaceService';
+import { storageService } from '@/services/storageService';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Image, Lock, Edit, Loader2, Trash2, Eye } from 'lucide-react';
+import { Plus, Image, Edit, Loader2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function DesignsTab({ workspaceId, currentUser, memberRole }) {
@@ -21,25 +23,38 @@ export default function DesignsTab({ workspaceId, currentUser, memberRole }) {
   useEffect(() => {
     loadDesigns();
     
-    const unsubscribe = base44.entities.WorkspaceDesign.subscribe((event) => {
-      if (event.data.workspace_id === workspaceId) {
-        loadDesigns();
-      }
-    });
+    // Setup real-time listener for workspace designs
+    const channel = supabase
+      .channel(`workspace-designs-${workspaceId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'workspace_designs',
+          filter: `workspace_id=eq.${workspaceId}`
+        },
+        () => {
+          loadDesigns();
+        }
+      )
+      .subscribe();
 
-    return unsubscribe;
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [workspaceId]);
 
   const loadDesigns = async () => {
     try {
-      const workspaceDesigns = await base44.entities.WorkspaceDesign.filter({
-        workspace_id: workspaceId
-      });
+      const workspaceDesigns = await workspaceService.getWorkspaceDesigns(workspaceId);
       setDesigns(workspaceDesigns);
     } catch (error) {
       console.error('Failed to load designs:', error);
+      toast.error('Failed to sync workspace updates');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const addDesign = async () => {
@@ -50,15 +65,19 @@ export default function DesignsTab({ workspaceId, currentUser, memberRole }) {
 
     setUploading(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file: designFile });
+      // 1. Upload file using our unified storage service
+      const publicUrl = await storageService.uploadDesignImage(designFile, currentUser.id);
 
-      await base44.entities.WorkspaceDesign.create({
-        workspace_id: workspaceId,
-        title: designTitle,
-        preview_url: file_url,
-        created_by_id: currentUser.id,
-        created_by_name: currentUser.full_name || currentUser.email,
-        last_edited_by: currentUser.full_name || currentUser.email
+      // 2. Commit the row data to the workspace_designs database table
+      await workspaceService.saveDesignToWorkspace({
+        workspaceId,
+        imageUrl: publicUrl,
+        promptUsed: 'Manual file upload illustration',
+        configuration: {
+          title: designTitle,
+          created_by_name: currentUser.full_name || currentUser.email,
+          last_edited_by: currentUser.full_name || currentUser.email
+        }
       });
 
       setShowAddModal(false);
@@ -68,8 +87,9 @@ export default function DesignsTab({ workspaceId, currentUser, memberRole }) {
     } catch (error) {
       console.error('Failed to add design:', error);
       toast.error('Failed to add design');
+    } finally {
+      setUploading(false);
     }
-    setUploading(false);
   };
 
   const deleteDesign = async (design) => {
@@ -78,21 +98,20 @@ export default function DesignsTab({ workspaceId, currentUser, memberRole }) {
       return;
     }
 
-    if (!confirm(`Delete "${design.title}"? This will remove all versions.`)) {
+    if (!confirm(`Delete this design? This will remove all associated configurations.`)) {
       return;
     }
 
     try {
-      await base44.entities.WorkspaceDesign.delete(design.id);
+      const { error } = await supabase
+        .from('workspace_designs')
+        .delete()
+        .eq('id', design.id);
+
+      if (error) throw error;
       
-      const versions = await base44.entities.WorkspaceVersion.filter({
-        workspace_id: workspaceId,
-        design_id: design.design_id
-      });
-      
-      await Promise.all(versions.map(v => base44.entities.WorkspaceVersion.delete(v.id)));
-      
-      toast.success('Design deleted');
+      toast.success('Design deleted successfully');
+      loadDesigns();
     } catch (error) {
       console.error('Failed to delete design:', error);
       toast.error('Failed to delete design');
@@ -101,16 +120,17 @@ export default function DesignsTab({ workspaceId, currentUser, memberRole }) {
 
   const canEdit = memberRole === 'host' || memberRole === 'supervisor';
   const canDelete = memberRole === 'host';
-  const isTailor = memberRole === 'tailor'; // read-only + chat only
+  const isTailor = memberRole === 'tailor'; 
 
   const handleDesignClick = (design) => {
+    const imageUrl = design.image_url || design.preview_url;
+    const title = design.configuration?.title || design.prompt_used || 'Untitled Design';
+
     if (isTailor) {
-      // Tailors go directly to Deconstruct with the design pre-loaded
-      navigate(createPageUrl('TailorixDeconstruct') + `?workspace_image_url=${encodeURIComponent(design.preview_url)}&workspace_design_title=${encodeURIComponent(design.title)}`);
+      navigate(createPageUrl('TailorixDeconstruct') + `?workspace_image_url=${encodeURIComponent(imageUrl)}&workspace_design_title=${encodeURIComponent(title)}`);
       return;
     }
-    // Supervisors/Hosts go to Illustrator with image pre-loaded in Modify tab
-    navigate(createPageUrl('DesignGenerator') + `?workspace_id=${workspaceId}&workspace_design_id=${design.id}&workspace_image_url=${encodeURIComponent(design.preview_url)}&remix_tab=modify&remix_image_url=${encodeURIComponent(design.preview_url)}`);
+    navigate(createPageUrl('DesignGenerator') + `?workspace_id=${workspaceId}&workspace_design_id=${design.id}&workspace_image_url=${encodeURIComponent(imageUrl)}&remix_tab=modify&remix_image_url=${encodeURIComponent(imageUrl)}`);
   };
 
   if (loading) {
@@ -143,60 +163,63 @@ export default function DesignsTab({ workspaceId, currentUser, memberRole }) {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {designs.map((design, index) => (
-            <motion.div
-              key={design.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              whileHover={!isTailor ? { y: -4, boxShadow: '0 20px 40px rgba(245, 214, 123, 0.2)' } : {}}
-              onClick={() => handleDesignClick(design)}
-              className={`bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl overflow-hidden border-2 border-amber-500/20 group relative cursor-pointer`}
-            >
-              <div className="relative h-48 bg-slate-900/50">
-                <img 
-                  src={design.preview_url} 
-                  alt={design.title}
-                  className="w-full h-full object-cover"
-                />
-                {/* Tailor: deconstruct badge */}
-                {isTailor && (
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                    <span className="text-white font-semibold text-sm">Open in Deconstruct</span>
-                  </div>
-                )}
-                {/* Supervisor/Host: edit overlay */}
-                {canEdit && (
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                    <Edit className="w-8 h-8 text-white" />
-                    <span className="text-white font-semibold">Open in Illustrator</span>
-                  </div>
-                )}
-                {canDelete && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteDesign(design);
-                    }}
-                    className="absolute top-2 left-2 w-8 h-8 bg-slate-900/90 hover:bg-red-900/90 text-amber-400 hover:text-red-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                )}
-              </div>
-              <div className="p-4">
-                <h3 className="text-lg font-bold text-white mb-1">{design.title}</h3>
-                <p className="text-sm text-amber-200/60">
-                  By {design.created_by_name}
-                </p>
-                <p className="text-xs text-amber-200/40 mt-1">
-                  Last edited: {design.last_edited_by}
-                </p>
-              </div>
-            </motion.div>
-          ))}
+          {designs.map((design, index) => {
+            const currentImg = design.image_url || design.preview_url;
+            const currentTitle = design.configuration?.title || design.prompt_used || 'Untitled Design';
+            
+            return (
+              <motion.div
+                key={design.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                whileHover={!isTailor ? { y: -4, boxShadow: '0 20px 40px rgba(245, 214, 123, 0.2)' } : {}}
+                onClick={() => handleDesignClick(design)}
+                className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl overflow-hidden border-2 border-amber-500/20 group relative cursor-pointer"
+              >
+                <div className="relative h-48 bg-slate-900/50">
+                  <img 
+                    src={currentImg} 
+                    alt={currentTitle}
+                    className="w-full h-full object-cover"
+                  />
+                  {isTailor && (
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                      <span className="text-white font-semibold text-sm">Open in Deconstruct</span>
+                    </div>
+                  )}
+                  {canEdit && (
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                      <Edit className="w-8 h-8 text-white" />
+                      <span className="text-white font-semibold">Open in Illustrator</span>
+                    </div>
+                  )}
+                  {canDelete && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteDesign(design);
+                      }}
+                      className="absolute top-2 left-2 w-8 h-8 bg-slate-900/90 hover:bg-red-900/90 text-amber-400 hover:text-red-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+                <div className="p-4">
+                  <h3 className="text-lg font-bold text-white mb-1">{currentTitle}</h3>
+                  <p className="text-sm text-amber-200/60">
+                    By {design.configuration?.created_by_name || 'Designer'}
+                  </p>
+                  <p className="text-xs text-amber-200/40 mt-1">
+                    Last edited: {design.configuration?.last_edited_by || 'Unknown'}
+                  </p>
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
       )}
 
