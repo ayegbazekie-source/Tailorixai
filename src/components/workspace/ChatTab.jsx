@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Send, Loader2 } from 'lucide-react';
@@ -15,16 +15,35 @@ export default function ChatTab({ workspaceId, currentUser }) {
   useEffect(() => {
     loadMessages();
     
-    const unsubscribe = base44.entities.WorkspaceMessage.subscribe((event) => {
-      if (event.data.workspace_id === workspaceId) {
-        if (event.type === 'create' && event.data.sender_user_id !== currentUser.id) {
-          toast.success(`${event.data.sender_name}: ${event.data.message_text.substring(0, 50)}...`);
+    // Subscribe to real-time chat messages for this workspace
+    const channel = supabase
+      .channel(`workspace-chat-${workspaceId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'workspace_messages',
+          filter: `workspace_id=eq.${workspaceId}`
+        },
+        (payload) => {
+          const newMsg = payload.new;
+          // Trigger toast alert if message is from another team member
+          if (newMsg.sender_user_id !== currentUser.id) {
+            toast.success(`${newMsg.sender_name}: ${newMsg.message_text.substring(0, 50)}...`);
+            setMessages(prev => {
+              // Avoid duplicate insertion if pulled quickly by a reload callback
+              if (prev.some(m => m.id === newMsg.id)) return prev;
+              return [...prev, newMsg];
+            });
+          }
         }
-        loadMessages();
-      }
-    });
+      )
+      .subscribe();
 
-    return unsubscribe;
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [workspaceId]);
 
   useEffect(() => {
@@ -37,56 +56,73 @@ export default function ChatTab({ workspaceId, currentUser }) {
 
   const loadMessages = async () => {
     try {
-      const workspaceMessages = await base44.entities.WorkspaceMessage.filter({
-        workspace_id: workspaceId
-      }, 'created_date', 100);
-      setMessages(workspaceMessages);
+      const { data, error } = await supabase
+        .from('workspace_messages')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .order('created_at', { ascending: true })
+        .limit(100);
+
+      if (error) throw error;
+      setMessages(data || []);
     } catch (error) {
       console.error('Failed to load messages:', error);
+      toast.error('Could not sync chat records');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const sendMessage = async () => {
     if (!messageText.trim()) return;
 
     const tempId = `temp_${Date.now()}`;
+    const senderName = currentUser.full_name || currentUser.email;
     const optimisticMessage = {
       id: tempId,
       workspace_id: workspaceId,
       sender_user_id: currentUser.id,
-      sender_name: currentUser.full_name || currentUser.email,
+      sender_name: senderName,
       message_text: messageText,
-      created_date: new Date().toISOString(),
+      created_at: new Date().toISOString(),
       _optimistic: true
     };
 
-    // Optimistic UI update
+    // Optimistic UI push for responsive mobile handling
     setMessages(prev => [...prev, optimisticMessage]);
     const currentMessage = messageText;
     setMessageText('');
     setSending(true);
 
     try {
-      const newMessage = await base44.entities.WorkspaceMessage.create({
-        workspace_id: workspaceId,
-        sender_user_id: currentUser.id,
-        sender_name: currentUser.full_name || currentUser.email,
-        message_text: currentMessage
-      });
+      const { data, error } = await supabase
+        .from('workspace_messages')
+        .insert([
+          {
+            workspace_id: workspaceId,
+            sender_user_id: currentUser.id,
+            sender_name: senderName,
+            message_text: currentMessage
+          }
+        ])
+        .select()
+        .single();
 
-      // Replace optimistic message with real one
+      if (error) throw error;
+
+      // Swap our temporary layout record for the verified db item
       setMessages(prev => prev.map(msg => 
-        msg.id === tempId ? newMessage : msg
+        msg.id === tempId ? data : msg
       ));
     } catch (error) {
       console.error('Failed to send message:', error);
-      toast.error('Failed to send message');
-      // Rollback on error
+      toast.error('Failed to deliver message');
+      // Revert states cleanly if request drops offline
       setMessages(prev => prev.filter(msg => msg.id !== tempId));
       setMessageText(currentMessage);
+    } finally {
+      setSending(false);
     }
-    setSending(false);
   };
 
   if (loading) {
@@ -108,6 +144,8 @@ export default function ChatTab({ workspaceId, currentUser }) {
         ) : (
           messages.map((msg) => {
             const isCurrentUser = msg.sender_user_id === currentUser.id;
+            const timeStamp = msg.created_at || msg.created_date;
+            
             return (
               <div
                 key={msg.id}
@@ -127,7 +165,7 @@ export default function ChatTab({ workspaceId, currentUser }) {
                   )}
                   <p className="text-sm">{msg.message_text}</p>
                   <p className={`text-xs mt-1 ${isCurrentUser ? 'text-slate-700' : 'text-amber-200/40'}`}>
-                    {new Date(msg.created_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {new Date(timeStamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
               </div>
