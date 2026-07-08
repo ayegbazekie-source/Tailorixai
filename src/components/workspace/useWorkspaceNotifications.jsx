@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 
 export function useWorkspaceNotifications(user, isPremium) {
@@ -8,7 +8,7 @@ export function useWorkspaceNotifications(user, isPremium) {
   const [unreadCount, setUnreadCount] = useState(0);
   const audioRef = useRef(null);
   const activeWorkspaceRef = useRef(null);
-  const subscribedRef = useRef(false);
+  const channelRef = useRef(null);
 
   // Monitor online/offline status
   useEffect(() => {
@@ -49,10 +49,10 @@ export function useWorkspaceNotifications(user, isPremium) {
   // Play notification sound
   const playNotificationSound = () => {
     if (!audioRef.current) {
-      audioRef.current = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZTA0OVqzn77BdGAg+ltryxnMpBSh+zPDajzkHGGS56+mjUhELTKXh8bllHAU2jdXzz38uBSp3xu/bkUAKFl223+qnVRQLQ5zd8sFuJAU1htDy0oI0Bx1qvOzjm08NDFSq5O+vYBgJPJTY8sh0LAUrfdDv3I0+ChVftdvqp1UUC0Kd3fK/biMFMoXP8s5/LgUrdsbv2o9ACBVcttvqp1QUD0Ka3fK+bSMFMoXP8s5/LQYqdsbv2o9ACBVcttvqp1QUD0Ka3fK+bSMFMoXP8s5/LQYqdsbv2o9ACBZcttvqp1QUD0Ka3fK+bSMFMoXP8s5/LQYqdsbv2o9ACBZdttvqp1QUEEKa3fK+bSMFMoXP8s5/LQYqdsbv2o9ACBZdttvqp1QUEEKa3fK+bSMFMoXP8s5/LQYqdsbv2o9ACBZdttvqp1QUEEKa3fK+bSMFMoXP8s5/LQYqdsbv2o9ACBZdttvqp1QUEEKa3fK+bSMFMoXP8s5/LQYqdsbv2o9ACBZdttvqp1QUEEKa3fK+bSMFMoXP8s5/LQYqdsbv2o9ACBZdttvqp1QUEEKa3fK+bSMFMoXP8s5/LQYqdsbv2o9ACBZdttvqp1QUEEKa3fK+bSMFMoXP8s5/LQYqdsbv2o9ACBZdttvqp1QUEEKa3fK+');
+      audioRef.current = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZTA0OVqzn77BdGAg+ltryxnMpBSh+zPDajzkHGGS56+mjUhELTKXh8bllHAU2jdXzz38uBSp3xu/bkUAKFl223+qnVRQLQ5zd8sFuJAU1htDy0oI0Bx1qvOzjm08NDFSq5O+vYBgJPJTY8sh0LAUrfdDv3I0+ChVftdvqp1UUC0Kd3fK/biMFMoXP8s5/LgUrdsbv2o9ACBVcttvqp1QUD0Ka3fK+bSMFMoXP8s5/LQYqdsbv2o9ACBVcttvqp1QUD0Ka3fK+bSMFMoXP8s5/LQYqdsbv2o9ACBZcttvqp1QUD0Ka3fK+bSMFMoXP8s5/LQYqdsbv2o9ACBZcttvqp1QUD0Ka3fK+bSMFMoXP8s5/LQYqdsbv2o9ACBZdttvqp1QUEEKa3fK+bSMFMoXP8s5/LQYqdsbv2o9ACBZdttvqp1QUEEKa3fK+bSMFMoXP8s5/LQYqdsbv2o9ACBZdttvqp1QUEEKa3fK+bSMFMoXP8s5/LQYqdsbv2o9ACBZdttvqp1QUEEKa3fK+bSMFMoXP8s5/LQYqdsbv2o9ACBZdttvqp1QUEEKa3fK+bSMFMoXP8s5/LQYqdsbv2o9ACBZdttvqp1QUEEKa3fK+bSMFMoXP8s5/LQYqdsbv2o9ACBZdttvqp1QUEEKa3fK+');
     }
     audioRef.current.play().catch(() => {
-      // Ignore autoplay errors
+      // Ignore autoplay roadblocks cleanly
     });
   };
 
@@ -60,13 +60,11 @@ export function useWorkspaceNotifications(user, isPremium) {
   const showMessageNotification = (message, workspaceName) => {
     if (!isOnline || !isPremium) return;
 
-    // Don't notify if user is viewing the workspace where message was sent
+    // Don't notify if user is actively in this chat screen
     if (activeWorkspaceRef.current === message.workspace_id) return;
 
-    // Play sound
     playNotificationSound();
 
-    // Show toast notification
     toast.custom((t) => (
       <div
         className={`${
@@ -77,7 +75,7 @@ export function useWorkspaceNotifications(user, isPremium) {
           <div className="flex items-start">
             <div className="flex-shrink-0 pt-0.5">
               <div className="h-10 w-10 rounded-full bg-gradient-to-br from-amber-500 to-yellow-500 flex items-center justify-center text-black font-bold text-sm">
-                {message.sender_name.charAt(0).toUpperCase()}
+                {message.sender_name?.charAt(0).toUpperCase() || 'T'}
               </div>
             </div>
             <div className="ml-3 flex-1">
@@ -109,67 +107,82 @@ export function useWorkspaceNotifications(user, isPremium) {
       position: 'top-right',
     });
 
-    // Update unread count
     setUnreadCount(prev => prev + 1);
   };
 
-  // Subscribe to workspace messages
+  // Subscribe to workspace messages using Supabase Realtime
   useEffect(() => {
-    if (!user || !isPremium || subscribedRef.current) return;
+    if (!user?.id || !isPremium) return;
 
     const setupSubscriptions = async () => {
       try {
-        // Get all workspaces user belongs to
-        const members = await base44.entities.WorkspaceMember.filter({
-          user_id: user.id
-        });
+        // Fetch all workspaces this user belongs to, including the workspace name
+        const { data: membershipData, error } = await supabase
+          .from('workspace_members')
+          .select(`
+            workspace_id,
+            workspaces!inner (
+              id,
+              title
+            )
+          `)
+          .eq('user_id', user.id);
 
-        const workspaceIds = members.map(m => m.workspace_id);
+        if (error) throw error;
+        if (!membershipData || membershipData.length === 0) return;
+
+        const workspaceIds = membershipData.map(m => m.workspace_id);
         
-        if (workspaceIds.length === 0) return;
-
-        // Fetch workspace names
-        const workspaces = await Promise.all(
-          workspaceIds.map(id => base44.entities.Workspace.filter({ id }))
-        );
+        // Build an easy-access map for looking up title descriptions
         const workspaceMap = {};
-        workspaces.flat().forEach(ws => {
-          workspaceMap[ws.id] = ws.name;
-        });
-
-        // Subscribe to workspace messages
-        const unsubscribe = base44.entities.WorkspaceMessage.subscribe((event) => {
-          if (event.type === 'create' && event.data) {
-            const message = event.data;
-            
-            // Don't notify for own messages
-            if (message.sender_user_id === user.id) return;
-
-            // Only notify if workspace belongs to user
-            if (workspaceIds.includes(message.workspace_id)) {
-              const workspaceName = workspaceMap[message.workspace_id] || 'Workspace';
-              showMessageNotification(message, workspaceName);
-            }
+        membershipData.forEach(m => {
+          if (m.workspaces) {
+            workspaceMap[m.workspaces.id] = m.workspaces.title;
           }
         });
 
-        subscribedRef.current = true;
+        // Initialize Supabase Global Realtime Broadcast for incoming messages
+        channelRef.current = supabase
+          .channel(`global-workspace-notifications-${user.id}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'workspace_messages'
+            },
+            (payload) => {
+              const message = payload.new;
 
-        return () => {
-          unsubscribe();
-          subscribedRef.current = false;
-        };
+              // Don't notify for messages authored by the current user
+              if (message.sender_user_id === user.id) return;
+
+              // Verify the incoming insertion belongs to one of our active team channels
+              if (workspaceIds.includes(message.workspace_id)) {
+                const workspaceName = workspaceMap[message.workspace_id] || 'Workspace Channel';
+                showMessageNotification(message, workspaceName);
+              }
+            }
+          )
+          .subscribe();
+
       } catch (error) {
         console.error('Failed to setup workspace subscriptions:', error);
       }
     };
 
     setupSubscriptions();
-  }, [user, isPremium]);
+
+    // Cleanup channels on unmount
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
+    };
+  }, [user?.id, isPremium]);
 
   const setActiveWorkspace = (workspaceId) => {
     activeWorkspaceRef.current = workspaceId;
-    // Reset unread count when viewing workspace
     if (workspaceId) {
       setUnreadCount(0);
     }
@@ -183,4 +196,4 @@ export function useWorkspaceNotifications(user, isPremium) {
     setActiveWorkspace,
     setUnreadCount
   };
-}
+          }
