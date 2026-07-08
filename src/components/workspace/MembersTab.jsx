@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -19,32 +19,49 @@ export default function MembersTab({ workspaceId, currentUser, memberRole, works
   useEffect(() => {
     loadMembers();
     
-    const unsubscribe = base44.entities.WorkspaceMember.subscribe((event) => {
-      if (event.data.workspace_id === workspaceId) {
-        if (event.type === 'create') {
-          toast.success(`${event.data.user_name} joined the workspace`);
+    // Subscribe to real-time additions/removals of workspace members
+    const channel = supabase
+      .channel(`workspace-members-${workspaceId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'workspace_members',
+          filter: `workspace_id=eq.${workspaceId}`
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            toast.success(`${payload.new.user_name || 'A new member'} joined the workspace`);
+          }
+          loadMembers();
         }
-        loadMembers();
-      }
-    });
+      )
+      .subscribe();
 
-    return unsubscribe;
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [workspaceId]);
 
   const loadMembers = async () => {
     try {
-      const workspaceMembers = await base44.entities.WorkspaceMember.filter({
-        workspace_id: workspaceId
-      });
-      setMembers(workspaceMembers);
+      const { data, error } = await supabase
+        .from('workspace_members')
+        .select('*')
+        .eq('workspace_id', workspaceId);
+
+      if (error) throw error;
+      setMembers(data || []);
     } catch (error) {
       console.error('Failed to load members:', error);
+      toast.error('Could not sync workspace members');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const inviteMember = async () => {
-
     if (!inviteEmail.trim()) {
       toast.error('Please enter an email address');
       return;
@@ -52,10 +69,14 @@ export default function MembersTab({ workspaceId, currentUser, memberRole, works
 
     setInviting(true);
     try {
-      // Check if user exists and is premium
-      const users = await base44.entities.User.filter({ email: inviteEmail });
-      
-      if (users.length === 0) {
+      // Check if user exists in our primary profiles/users table
+      const { data: userProfile, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', inviteEmail.trim())
+        .maybeSingle();
+
+      if (userError || !userProfile) {
         toast.error('User not found. They must be a registered Tailorix AI user.', {
           style: { background: '#1e1e1e', color: '#F8F8F2', border: '1px solid #D4AF37' },
           icon: '⚠️',
@@ -64,9 +85,8 @@ export default function MembersTab({ workspaceId, currentUser, memberRole, works
         return;
       }
 
-      const invitedUser = users[0];
-      
-      if (!invitedUser.isPro) {
+      // Verify Pro status configuration
+      if (!userProfile.is_pro && !userProfile.isPro) {
         toast.error('This user does not have an active Tailorix AI Pro subscription.', {
           style: { background: '#1e1e1e', color: '#F8F8F2', border: '1px solid #D4AF37' },
           icon: '👑',
@@ -76,55 +96,64 @@ export default function MembersTab({ workspaceId, currentUser, memberRole, works
       }
 
       // Check if already a member
-      const existing = members.find(m => m.user_email === inviteEmail);
+      const existing = members.find(m => m.user_email === inviteEmail.trim());
       if (existing) {
         toast.error('User is already a member');
         setInviting(false);
         return;
       }
 
-      await base44.entities.WorkspaceMember.create({
-        workspace_id: workspaceId,
-        user_id: invitedUser.id,
-        user_email: invitedUser.email,
-        user_name: invitedUser.full_name || invitedUser.email,
-        role: inviteRole,
-        is_online: false
-      });
+      // Add to workspace members table
+      const { error: insertError } = await supabase
+        .from('workspace_members')
+        .insert([
+          {
+            workspace_id: workspaceId,
+            user_id: userProfile.id,
+            user_email: userProfile.email,
+            user_name: userProfile.full_name || userProfile.email,
+            role: inviteRole,
+            is_online: false
+          }
+        ]);
+
+      if (insertError) throw insertError;
 
       // Send real-time in-app notification to invited user
-      const workspaceData = workspaceName ? null : await base44.entities.Workspace.filter({ id: workspaceId });
-      const wsName = workspaceName || workspaceData?.[0]?.name || 'a workspace';
-      await base44.entities.Notification.create({
-        recipient_id: invitedUser.id,
-        actor_name: currentUser?.full_name || 'A host',
-        actor_id: currentUser?.id || '',
-        type: 'team_invite',
-        post_id: workspaceId,
-        post_preview: `You've been invited as ${inviteRole} to "${wsName}"`,
-        post_image_url: '',
-        is_read: false,
-      }).catch(() => {});
+      let wsName = workspaceName;
+      if (!wsName) {
+        const { data: wsData } = await supabase
+          .from('workspaces')
+          .select('title')
+          .eq('id', workspaceId)
+          .maybeSingle();
+        wsName = wsData?.title || 'a workspace';
+      }
 
-      // Send deep-link invitation email
-      const workspaceUrl = `${window.location.origin}/WorkspaceDetail?id=${workspaceId}`;
-      await base44.integrations.Core.SendEmail({
-        to: invitedUser.email,
-        subject: `You've been invited to a Tailorix AI Workspace`,
-        body: `Hi ${invitedUser.full_name || invitedUser.email},\n\nYou have been invited as a ${inviteRole} to a collaboration workspace on Tailorix AI.\n\nClick here to open the workspace:\n${workspaceUrl}\n\nYour role: ${inviteRole.charAt(0).toUpperCase() + inviteRole.slice(1)}\n\n- Tailorix AI Team`
-      });
+      await supabase.from('notifications').insert([
+        {
+          user_id: userProfile.id,
+          title: 'New Team Invitation',
+          message: `${currentUser?.full_name || 'A host'} invited you as a ${inviteRole} to "${wsName}"`,
+          is_read: false
+        }
+      ]).catch((e) => console.error('Failed to create internal notice:', e));
+
+      // Optional: If you have a custom mail function set up on your backend route or Edge Functions, trigger it here.
+      console.log(`Deep-link email notification intended for: ${userProfile.email}`);
 
       setShowInviteModal(false);
       setInviteEmail('');
       setInviteRole('tailor');
-      toast.success('Member invited and notified via email', {
+      toast.success('Member invited successfully', {
         style: { background: '#1e1e1e', color: '#F8F8F2', border: '1px solid #D4AF37' },
       });
     } catch (error) {
       console.error('Failed to invite member:', error);
-      toast.error('Failed to invite member');
+      toast.error('Failed to complete invitation');
+    } finally {
+      setInviting(false);
     }
-    setInviting(false);
   };
 
   const removeMember = async (member) => {
@@ -143,8 +172,14 @@ export default function MembersTab({ workspaceId, currentUser, memberRole, works
     }
 
     try {
-      await base44.entities.WorkspaceMember.delete(member.id);
+      const { error } = await supabase
+        .from('workspace_members')
+        .delete()
+        .eq('id', member.id);
+
+      if (error) throw error;
       toast.success('Member removed');
+      loadMembers();
     } catch (error) {
       console.error('Failed to remove member:', error);
       toast.error('Failed to remove member');
@@ -284,7 +319,7 @@ export default function MembersTab({ workspaceId, currentUser, memberRole, works
               <Button
                 onClick={inviteMember}
                 disabled={inviting}
-                className="flex-1 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-900 font-bold"
+                className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-900 font-bold"
               >
                 {inviting ? (
                   <>
@@ -301,4 +336,5 @@ export default function MembersTab({ workspaceId, currentUser, memberRole, works
       </Dialog>
     </div>
   );
-}
+            }
+                
